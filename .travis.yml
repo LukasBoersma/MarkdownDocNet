@@ -1,0 +1,4 @@
+language: csharp
+solution: MarkdownDocNet.sln
+script:
+  - xbuild /p:Configuration=Release /p:TargetFrameworkVersion="v4.5" /p:ToolsVersion="4.0" MarkdownDocNet.sln
