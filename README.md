@@ -11,7 +11,9 @@ Here is a **[live demo](https://fastcgi-for-net.readthedocs.org/en/latest/api_re
 
 MarkdownDocNet integrates well with [MkDocs](http://www.mkdocs.org/) and [ReadTheDocs](https://readthedocs.org).
 
-## Usage
+## Getting started
+
+**[Download the latest binary release here](https://github.com/LukasBoersma/MarkdownDocNet/releases/latest)**. Alternatively, clone or download the [Github repository](https://github.com/LukasBoersma/MarkdownDocNet) and build it from source. See section 'Compilation' below if you need help.
 
 To create a documentation file, simply execute:
 
