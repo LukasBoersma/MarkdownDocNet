@@ -7,7 +7,7 @@
 It transforms [.NET XML documentation files](https://msdn.microsoft.com/en-us/library/aa288481.aspx) into minimalistic Markdown documents.
 I recommend to use this tool to generate the "API reference" part of your documentation, and write the rest of your documentation by hand in separate Markdown files.
 
-Here is a **[live demo](http://fastcgi-for-net.readthedocs.org/en/latest/)** of a documentation generated with MarkdownDocNet.
+Here is a **[live demo](https://fastcgi-for-net.readthedocs.org/en/latest/api_reference/)** of a documentation generated with MarkdownDocNet.
 
 MarkdownDocNet integrates well with [MkDocs](http://www.mkdocs.org/) and [ReadTheDocs](https://readthedocs.org).
 
@@ -17,25 +17,27 @@ To create a documentation file, simply execute:
 
     MarkdownDocNet.exe <documentation.xml> <assembly.dll> <output.md>
 
-On Linux, you need to call `mono MarkdownDocNet.exe`.
-
-The meaning of each parameter:
-
-* **documentation.xml** is the .NET XML documentation file. In Visual Studio, you can enable the generation of this documentation file in the project settings. If you use Mono, you can use the [/doc option](http://www.mono-project.com/docs/tools+libraries/tools/monodoc/generating-documentation/#inline-xml-documentation) of the Mono compiler to create the XML file.
+* **documentation.xml** is the .NET XML documentation file.
 * **assembly.dll** is the Assembly filename that corresponds to the given documentation file name.
 * **output.md** is the output file.
+
+In Visual Studio, you can enable the generation of this documentation file in the project settings. If you use Mono, you can use the [/doc option](http://www.mono-project.com/docs/tools+libraries/tools/monodoc/generating-documentation/#inline-xml-documentation) of the Mono compiler to create the XML file.
 
 ## How it works
 
 MarkdownDocNet looks at all the public types in the given assembly. If the type is not documented in the XML file, it is ignored.
 It then generates the description of the type and a list of all members. Members are included even if no documentation is present.
 
-MarkdownDocNet ignores some of the tags in the XML documentation. It focuses on creating a minimalistic reference document. The supported tags are:
+Everything is then written to a single Markdown file, as specified in the command line.
 
-* **summary** and **remarks**: These are concatenated and used as the description of types and members.
-* **see**: Creates links as you would expect. The links will only work for types inside the current assembly.
+MarkdownDocNet uses only some tags in the XML documentation. It focuses on creating a minimalistic reference document. The supported tags are:
 
-Other tags, like *returns*, *param* or *example* are ignored.
+* *&lt;summary&gt;* and *&lt;remarks&gt;*: These are concatenated and used as the description of types and members.
+* *&lt;see&gt;*: Creates links as you would expect. The links will only work for types inside the current assembly.
+* *&lt;example&gt;*: Adds a section "Examples" to the description. Only used for types. For class mebers, this is ignored.
+* *&lt;code&gt;*: Formats the enclosed code.
+
+Other tags, like *returns* or *param* are ignored. This is done to keep the documentation as simple as possible.
 
 When creating the documentation for types, a single list of the members is created. No individual sections for the members are created.
 
