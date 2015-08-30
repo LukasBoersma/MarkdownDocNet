@@ -23,7 +23,7 @@ To create a documentation file, simply execute:
 * **assembly.dll** is the Assembly filename that corresponds to the given documentation file name.
 * **output.md** is the output file.
 
-In Visual Studio, you can enable the generation of this documentation file in the project settings. If you use Mono, you can use the [/doc option](http://www.mono-project.com/docs/tools+libraries/tools/monodoc/generating-documentation/#inline-xml-documentation) of the Mono compiler to create the XML file.
+In Visual Studio, you can enable the generation of the XML documentation file in the project settings. If you use Mono, you can use the [/doc option](http://www.mono-project.com/docs/tools+libraries/tools/monodoc/generating-documentation/#inline-xml-documentation) of the Mono compiler to create the XML file.
 
 ## How it works
 
