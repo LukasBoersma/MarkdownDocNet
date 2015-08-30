@@ -51,6 +51,7 @@ namespace MarkdownDocNet
         public string Summary;
         public string Remarks;
         public string Returns;
+        public string Example;
         public Dictionary<string, string> ParameterDescriptionsByName = new Dictionary<string, string>();
     }
 
@@ -147,12 +148,24 @@ namespace MarkdownDocNet
 
             // Print summary and remarks
             if (!String.IsNullOrEmpty(doc.Summary))
+            {
                 output.AppendLine(doc.Summary);
+                output.AppendLine("");
+            }
 
             if (!String.IsNullOrEmpty(doc.Remarks))
+            {
                 output.AppendLine(doc.Remarks);
+                output.AppendLine("");
+            }
 
-            output.AppendLine("");
+            if (!String.IsNullOrEmpty(doc.Example))
+            {
+                output.AppendLine("**Examples**");
+                output.AppendLine("");
+                output.AppendLine(doc.Example);
+                output.AppendLine("");
+            }
 
             // Print overview of all members
 
@@ -181,6 +194,12 @@ namespace MarkdownDocNet
                     output.Append(methodList);
                     output.AppendLine("");
                 }
+            }
+
+            var events = type.GetEvents(BindingFlags.Instance | BindingFlags.Public);
+            if (events.Length > 0)
+            {
+                output.Append(MemberListCategory("Events", events));
             }
 
             var properties = type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
@@ -379,7 +398,7 @@ namespace MarkdownDocNet
                 var doc = MemberDocumentations[fullName];
                 if (!String.IsNullOrEmpty(doc.Summary))
                 {
-                    output.AppendLine("  " + doc.Summary);
+                    output.AppendLine("  " + doc.Summary + "  ");
                 }
                 if (!String.IsNullOrEmpty(doc.Remarks))
                 {
@@ -508,6 +527,10 @@ namespace MarkdownDocNet
             if (xReturns != null)
                 memberInfo.Returns = ParseDocText(xReturns);
 
+            var xExample = member.Element("example");
+            if (xExample != null)
+                memberInfo.Example = ParseDocText(xExample);
+
             var xParams = member.Elements("param");
             foreach(var param in xParams)
             {
@@ -523,16 +546,7 @@ namespace MarkdownDocNet
             if (node.NodeType == XmlNodeType.Text)
             {
                 var text = ((XText)node).Value;
-
-                var lineInfo = (IXmlLineInfo)node.Parent;
-                var indentationCount = lineInfo.LinePosition - 2;
-                if (indentationCount > 0)
-                {
-                    var indentation = "\n" + new String(' ', indentationCount);
-                    text = text.Replace(indentation, "\n");
-                }
-
-                return text.Trim();
+                return FixValueIndentation(node, text);
             }
             else if (node.NodeType == XmlNodeType.Element)
             {
@@ -541,6 +555,12 @@ namespace MarkdownDocNet
                 {
                     var descriptor = element.Attribute("cref").Value;
                     return LinkFromDescriptor(descriptor);
+                }
+                else if (element.Name == "code")
+                {
+                    var code = FixValueIndentation(element, element.Value);
+                    ParseDocText(element.FirstNode);
+                    return "\n```csharp\n" + code + "\n```\n";
                 }
                 else
                 {
@@ -555,6 +575,19 @@ namespace MarkdownDocNet
             }
             else
                 return "";
+        }
+
+        public string FixValueIndentation(XNode node, string text)
+        {
+            var lineInfo = (IXmlLineInfo)node.Parent;
+            var indentationCount = lineInfo.LinePosition - 2;
+            if (indentationCount > 0)
+            {
+                var indentation = "\n" + new String(' ', indentationCount);
+                text = text.Replace(indentation, "\n");
+            }
+
+            return text.Trim();
         }
 
         public string LinkFromDescriptor(string descriptor)
