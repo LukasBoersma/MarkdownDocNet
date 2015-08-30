@@ -1,4 +1,6 @@
-# MarkdownDocNet
+# MarkdownDocNet 
+
+[![Build Status](https://travis-ci.org/LukasBoersma/MarkdownDocNet.svg?branch=master)](https://travis-ci.org/LukasBoersma/MarkdownDocNet)
 
 *MarkdownDocNet* is a small command-line tool that creates API reference documents for .NET projects.
 
