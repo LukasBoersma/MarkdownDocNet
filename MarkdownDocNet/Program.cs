@@ -22,9 +22,9 @@ namespace MarkdownDocNet
             }
 
             Console.WriteLine("Usage: MarkdownDocNet <documentation.xml> <assembly.dll> <output.md>");
-            Console.WriteLine("This will take the .NET XML documentation file and a corresponding Assembly");
-            Console.WriteLine("and transform the included documentation into human-readable markdown files.");
-            Console.WriteLine("If output-directory is omitted, files are be placed in the current directory.");
+            Console.WriteLine("This will take the .NET XML documentation file and the corresponding Assembly");
+            Console.WriteLine("and transform the included documentation into human-readable markdown code.");
+            Console.WriteLine("All documentation will be written to <output.md>.");
         }
 
         static int Main(string[] args)
