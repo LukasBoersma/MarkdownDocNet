@@ -5,6 +5,8 @@
 It transforms [.NET XML documentation files](https://msdn.microsoft.com/en-us/library/aa288481.aspx) into minimalistic Markdown documents.
 I recommend to use this tool to generate the "API reference" part of your documentation, and write the rest of your documentation by hand in separate Markdown files.
 
+Here is a **[live demo](http://fastcgi-for-net.readthedocs.org/en/latest/)** of a documentation generated with MarkdownDocNet.
+
 MarkdownDocNet integrates well with [MkDocs](http://www.mkdocs.org/) and [ReadTheDocs](https://readthedocs.org).
 
 ## Usage
