@@ -126,9 +126,6 @@ namespace MarkdownDocNet
 
             output.AppendLine("<a id=\"" + type.FullName + "\"></a>");
 
-            // Print the type name heading
-            output.AppendLine("## " + type.Name);
-
             var typeType = "";
 
             if (type.IsValueType)
@@ -137,12 +134,12 @@ namespace MarkdownDocNet
                 typeType = "interface";
             else if (type.IsClass)
                 typeType = "class";
+            
+            // Print the type name heading
+            output.AppendLine("## " + typeType + " " + type.FullName);
 
-            // Print detailed declaration info
-            if(type.BaseType == typeof(object))
-                output.AppendLine(String.Format("*" + typeType + " " + type.FullName + "*"));
-            else
-                output.AppendLine(String.Format("*" + typeType + " " + type.FullName + ": " + type.BaseType.FullName + "*"));
+            if (type.BaseType != typeof(object))
+                output.AppendLine("* Extends " + type.BaseType.FullName + "*");
 
             output.AppendLine("");
 
@@ -263,9 +260,7 @@ namespace MarkdownDocNet
 
             // Print the type name heading
             output.AppendLine("<a id=\"" + type.FullName + "\"></a>");
-            output.AppendLine("## " + type.Name);
-
-            output.AppendLine(String.Format("*enum " + type.FullName + "*"));
+            output.AppendLine("## enum " + type.FullName);
 
             output.AppendLine("");
 
@@ -464,6 +459,9 @@ namespace MarkdownDocNet
             return output.ToString();
         }
 
+        /// <summary>
+        /// Returns the full name of the given member, in the same notation that is used in the XML documentation files for member ids and references.
+        /// </summary>
         public string FullNameFromMember(MemberInfo member)
         {
             if (member is MethodInfo)
@@ -480,9 +478,49 @@ namespace MarkdownDocNet
             }
         }
 
+        static Dictionary<Type, string> primitiveNames = new Dictionary<Type, string>
+        {
+            {typeof(byte), "byte"},
+            {typeof(sbyte), "sbyte"},
+            {typeof(short), "short"},
+            {typeof(ushort), "ushort"},
+            {typeof(int), "int"},
+            {typeof(uint), "uint"},
+            {typeof(long), "long"},
+            {typeof(ulong), "ulong"},
+            {typeof(char), "char"},
+            {typeof(float), "float"},
+            {typeof(double), "double"},
+            {typeof(decimal), "decimal"},
+            {typeof(bool), "bool"},
+            {typeof(object), "object"},
+            {typeof(string), "string"},
+        };
+
+        static HashSet<string> ignoredNamespaces = new HashSet<string>
+        {
+            "System",
+            "System.Collections.Generic",
+            "System.Text",
+            "System.IO"
+        };
+
+        /// <summary>
+        /// Returns the name of the given type as it would be notated in C#
+        /// </summary>
         public string CSharpName(Type type)
         {
-            var name = type.Name;
+            var name = "";
+
+            if (ignoredNamespaces.Contains(type.Namespace))
+                name = type.Name;
+            else
+                name = type.FullName;
+
+            name = name.Replace('+', '.');
+
+            if ((type.IsPrimitive || type == typeof(string)) && primitiveNames.ContainsKey(type))
+                return primitiveNames[type];
 
             if (!type.IsGenericType)
                 return name;
@@ -496,6 +534,9 @@ namespace MarkdownDocNet
             return output.ToString();
         }
 
+        /// <summary>
+        /// Parsed a single member node from the xml documentation and returns the corresponding MemberDoc object.
+        /// </summary>
         public MemberDoc ParseMember(XElement member)
         {
             var memberInfo = new MemberDoc();
@@ -517,31 +558,34 @@ namespace MarkdownDocNet
 
             var xSummary = member.Element("summary");
             if (xSummary != null)
-                memberInfo.Summary = ParseDocText(xSummary);
+                memberInfo.Summary = ParseDocText(xSummary, memberInfo.FullName);
 
             var xRemarks = member.Element("remarks");
             if (xRemarks != null)
-                memberInfo.Remarks = ParseDocText(xRemarks);
+                memberInfo.Remarks = ParseDocText(xRemarks, memberInfo.FullName);
 
             var xReturns = member.Element("returns");
             if (xReturns != null)
-                memberInfo.Returns = ParseDocText(xReturns);
+                memberInfo.Returns = ParseDocText(xReturns, memberInfo.FullName);
 
             var xExample = member.Element("example");
             if (xExample != null)
-                memberInfo.Example = ParseDocText(xExample);
+                memberInfo.Example = ParseDocText(xExample, memberInfo.FullName);
 
             var xParams = member.Elements("param");
             foreach(var param in xParams)
             {
                 var name = param.Attribute("name").Value;
-                memberInfo.ParameterDescriptionsByName[name] = ParseDocText(param);
+                memberInfo.ParameterDescriptionsByName[name] = ParseDocText(param, memberInfo.FullName);
             }
 
             return memberInfo;
         }
 
-        public string ParseDocText(XNode node)
+        /// <summary>
+        /// Parses the text inside a given XML node and returns a Markdown version of it.
+        /// </summary>
+        public string ParseDocText(XNode node, string contextMemberName)
         {
             if (node.NodeType == XmlNodeType.Text)
             {
@@ -554,12 +598,15 @@ namespace MarkdownDocNet
                 if (element.Name == "see")
                 {
                     var descriptor = element.Attribute("cref").Value;
-                    return LinkFromDescriptor(descriptor);
+                    string linkName = null;
+                    if (!String.IsNullOrEmpty(element.Value))
+                        linkName = element.Value;
+                    return LinkFromDescriptor(descriptor, contextMemberName, linkName);
                 }
                 else if (element.Name == "code")
                 {
                     var code = FixValueIndentation(element, element.Value);
-                    ParseDocText(element.FirstNode);
+                    ParseDocText(element.FirstNode, contextMemberName);
                     return "\n```csharp\n" + code + "\n```\n";
                 }
                 else
@@ -568,7 +615,7 @@ namespace MarkdownDocNet
                     foreach (var child in element.Nodes())
                     {
                         if(child.NodeType == XmlNodeType.Element || child.NodeType == XmlNodeType.Text)
-                            output.Append(ParseDocText(child));
+                            output.Append(ParseDocText(child, contextMemberName));
                     }
                     return output.ToString();
                 }
@@ -590,10 +637,14 @@ namespace MarkdownDocNet
             return text.Trim();
         }
 
-        public string LinkFromDescriptor(string descriptor)
+        public string LinkFromDescriptor(string descriptor, string contextMemberName, string linkName = null)
         {
             var link = FullNameFromDescriptor(descriptor);
-            return " [" + link + "](#" + link + ") ";
+
+            if(linkName == null)
+                return " [" + HumanNameFromDescriptor(descriptor, contextMemberName) + "](#" + link + ") ";
+            else
+                return " [" + linkName + "](#" + link + ") ";
         }
 
         public string FullNameFromDescriptor(string descriptor)
@@ -604,6 +655,91 @@ namespace MarkdownDocNet
                 throw new InvalidOperationException(String.Format("Invalid name descriptor: '{0}'", descriptor));
 
             return descriptorElements[1];
+        }
+
+        public string HumanNameFromDescriptor(string descriptor, string parentTypeOrNamespace = null)
+        {
+            var descriptorElements = descriptor.Split(':');
+
+            if (descriptorElements.Length != 2 || descriptorElements[0].Length != 1)
+                throw new InvalidOperationException(String.Format("Invalid name descriptor: '{0}'", descriptor));
+
+            var memberType = MemberDoc.TypeFromDescriptor(descriptorElements[0][0]);
+            var fullName = descriptorElements[1];
+
+            // Cut away any method signatures
+            var fullNameNoSig = fullName.Split(new char[] { '(' }, 2)[0];
+
+
+            if (String.IsNullOrEmpty(parentTypeOrNamespace))
+                return fullName;
+
+            var commonPrefix = "";
+            var dotIndex = fullNameNoSig.LastIndexOf('.');
+            if (dotIndex >= 0)
+            {
+                var possiblePrefix = fullNameNoSig.Substring(0, dotIndex);
+                commonPrefix = CommonNamespacePrefix(possiblePrefix, parentTypeOrNamespace);
+            }
+
+            //if(memberType == MemberType.Type || memberType == MemberType.Namespace)
+                return fullNameNoSig.Substring(commonPrefix.Length + 1);
+            /*else
+            {
+                var declaringTypeName = fullNameNoSig.Substring(0, fullNameNoSig.LastIndexOf('.'));
+                var declaringType = AssemblyInfo.GetType(declaringTypeName);
+                if(declaringType == null || declaringType.FullName != parentTypeOrNamespace)
+                    return fullNameNoSig.Substring(commonPrefix.Length + 1);
+                else
+                {
+                    // So the given descriptor 
+                    var memberName = fullName.Substring(commonPrefix.Length + 1);
+                    
+
+                    // For everything except methods, just return the member name
+                    if (memberType != MemberType.Method)
+                        return memberName;
+
+                    // Try to find the exact matching method so we can print the correct signature
+                    var possibleMatches = declaringType.GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public);
+                    foreach(var match in possibleMatches)
+                    {
+                        var memberId = FullNameFromMember(match);
+                        if (memberId == fullName)
+                            return match.Name + MakeSignature(match, true);
+                    }
+
+                    return memberName;
+                }
+            }
+            */
+        }
+
+        public static string CommonNamespacePrefix(string fullName1, string fullName2)
+        {
+            var elements1 = fullName1.Split('.');
+            var elements2 = fullName2.Split('.');
+
+            var potentialMatchLength = Math.Min(elements1.Length, elements2.Length);
+
+            var output = new StringBuilder();
+            bool first = true;
+
+            for (var i = 0; i < potentialMatchLength; i++)
+            {
+                if (elements1[i].Equals(elements2[i]))
+                {
+                    if (!first)
+                        output.Append(".");
+                    first = false;
+
+                    output.Append(elements1[i]);
+                }
+                else
+                    break;
+            }
+
+            return output.ToString();
         }
     }
 }
