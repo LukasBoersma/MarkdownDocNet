@@ -19,7 +19,8 @@ namespace MarkdownDocNet
         Method,
         Field,
         Property,
-        Event
+        Event,
+        Constructor
     }
 
     public class MemberDoc
@@ -47,6 +48,8 @@ namespace MarkdownDocNet
         public string FullName;
         public string LocalName;
         public string ParentName;
+
+        public int Importance = 0;
 
         public string Summary;
         public string Remarks;
@@ -85,7 +88,16 @@ namespace MarkdownDocNet
             var output = new StringBuilder();
 
             var types = AssemblyInfo.GetExportedTypes();
-            foreach(var type in types)
+
+            var typesSorted = types.OrderByDescending((Type a) =>
+            {
+                var impA = 0;
+                if (MemberDocumentations.ContainsKey(a.FullName))
+                    impA = MemberDocumentations[a.FullName].Importance;
+                return impA;
+            });
+
+            foreach (var type in typesSorted)
             {
                 var md = TypeToMarkdown(type);
                 if (!String.IsNullOrEmpty(md))
@@ -139,7 +151,7 @@ namespace MarkdownDocNet
             output.AppendLine("## " + typeType + " " + type.FullName);
 
             if (type.BaseType != typeof(object))
-                output.AppendLine("* Extends " + type.BaseType.FullName + "*");
+                output.AppendLine("*Extends " + type.BaseType.FullName + "*");
 
             output.AppendLine("");
 
@@ -167,6 +179,12 @@ namespace MarkdownDocNet
             // Print overview of all members
 
             var memberOutput = new StringBuilder();
+
+            var constructors = type.GetConstructors(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
+            if (constructors.Length > 0)
+            {
+                output.Append(MemberListCategory("Constructors", constructors));
+            }
 
             var methods = type.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
             if (methods.Length > 0)
@@ -371,6 +389,12 @@ namespace MarkdownDocNet
 
                 output.Append("**" + method.Name + "** *" + MakeSignature(method) + "*");
             }
+            else if (member is ConstructorInfo)
+            {
+                var constructor = (ConstructorInfo)member;
+                fullName = constructor.DeclaringType.FullName + ".#ctor" + MakeSignature(constructor, false);
+                output.Append("**" + member.DeclaringType.Name + "** *" + MakeSignature(constructor) + "*");
+            }
             else
             {
                 Type type = null;
@@ -415,16 +439,16 @@ namespace MarkdownDocNet
                 output.AppendLine("**" + title + "**");
                 output.AppendLine("");
             }
-            foreach (var property in members)
+            foreach (var member in members)
             {
-                output.AppendLine(MemberListItem(property));
+                output.AppendLine(MemberListItem(member));
             }
             output.AppendLine("");
 
             return output.ToString();
         }
 
-        public string MakeSignature(MethodInfo method, bool humanReadable=true)
+        public string MakeSignature(MethodBase method, bool humanReadable=true)
         {
             var output = new StringBuilder();
             output.Append("(");
@@ -555,6 +579,15 @@ namespace MarkdownDocNet
 
             memberInfo.FullName = descriptorElements[1];
             memberInfo.LocalName = memberInfo.FullName;
+
+            var xImportance = member.Element("importance");
+            if (xImportance != null)
+            {
+                int importance = 0;
+                if(int.TryParse(xImportance.Value, out importance))
+                    memberInfo.Importance = importance;
+            }
+
 
             var xSummary = member.Element("summary");
             if (xSummary != null)
