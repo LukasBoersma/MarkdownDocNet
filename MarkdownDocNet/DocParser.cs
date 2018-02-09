@@ -69,7 +69,7 @@ namespace MarkdownDocNet
         public DocParser(string docFile, string assemblyFile, string outputFile)
         {
             Doc = XDocument.Load(docFile, LoadOptions.SetLineInfo);
-            AssemblyInfo = Assembly.LoadFile(assemblyFile);
+            AssemblyInfo = Assembly.LoadFrom(assemblyFile);
             OutputFile = outputFile;
         }
 
