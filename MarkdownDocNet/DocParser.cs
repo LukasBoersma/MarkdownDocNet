@@ -630,11 +630,20 @@ namespace MarkdownDocNet
                 var element = (XElement)node;
                 if (element.Name == "see")
                 {
-                    var descriptor = element.Attribute("cref").Value;
+                    var crefAttribute = element.Attribute("cref");
+                    var hrefAttribute = element.Attribute("href");
+
+                    var value = crefAttribute == null ? element.Attribute("href").Value : element.Attribute("cref").Value;
+                    var isValueDescriptor = crefAttribute != null;
+
                     string linkName = null;
                     if (!String.IsNullOrEmpty(element.Value))
                         linkName = element.Value;
-                    return LinkFromDescriptor(descriptor, contextMemberName, linkName);
+
+                    if (!isValueDescriptor && String.IsNullOrEmpty(linkName))
+                        linkName = value;
+
+                    return isValueDescriptor ? LinkFromDescriptor(value, contextMemberName, linkName) : Link(value, linkName);
                 }
                 else if (element.Name == "code")
                 {
@@ -678,6 +687,11 @@ namespace MarkdownDocNet
                 return " [" + HumanNameFromDescriptor(descriptor, contextMemberName) + "](#" + link + ") ";
             else
                 return " [" + linkName + "](#" + link + ") ";
+        }
+
+        public string Link(string link, string linkName = null)
+        {
+            return " [" + linkName + "](" + link + ") ";
         }
 
         public string FullNameFromDescriptor(string descriptor)
